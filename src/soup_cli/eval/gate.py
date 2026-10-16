@@ -515,7 +515,7 @@ def _run_judge_task(
 
     items: list[dict] = []
     with prompts_path.open("r", encoding="utf-8") as fh:
-        for line in fh:
+        for lineno, line in enumerate(fh, start=1):
             line = line.strip()
             if not line:
                 continue
@@ -523,9 +523,20 @@ def _run_judge_task(
                 row = json.loads(line)
             except json.JSONDecodeError as exc:
                 raise ValueError(
-                    f"invalid JSONL in {task.prompts}: {exc}"
+                    f"invalid JSONL in {task.prompts}: line {lineno}: {exc}"
                 ) from exc
+            if not isinstance(row, dict):
+                raise ValueError(
+                    f"invalid JSONL in {task.prompts}: line {lineno}: expected "
+                    f"a JSON object with a 'prompt' field, got "
+                    f"{type(row).__name__}"
+                )
             prompt = row.get("prompt", "")
+            if not isinstance(prompt, str):
+                raise ValueError(
+                    f"invalid JSONL in {task.prompts}: line {lineno}: 'prompt' "
+                    f"must be a string, got {type(prompt).__name__}"
+                )
             response = generate_fn(prompt)
             items.append({
                 "prompt": prompt,
